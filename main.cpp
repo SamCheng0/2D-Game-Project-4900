@@ -431,7 +431,7 @@ public:
                 }
 
                 if (playerHealth <= 0) {
-                    cout << "Game Over!" << endl;
+                    gameOver();
                     gameWindow.close();
                 }
 
@@ -448,40 +448,44 @@ public:
                 }
                 gameWindow.draw(healthText);
                 gameWindow.display();
+                
             }
             if (isPaused) {
-                Text pauseText(pausefont);
-                pauseText.setString("Pause");
-                pauseText.setCharacterSize(50);
-                pauseText.setFillColor(Color::White);
-                pauseText.setPosition(Vector2f(800.f, 450.f));
-
-                Text continueText(pausefont);
-                continueText.setCharacterSize(40);
-                continueText.setString("Continue");
-                continueText.setPosition(Vector2f(800.f, 500.f));
-                continueText.setFillColor(Color::White);
-
-                Text exitToMenuText(pausefont);
-                exitToMenuText.setCharacterSize(40);
-                exitToMenuText.setString("Exit to Menu");
-                exitToMenuText.setPosition(Vector2f(800.f, 550.f));
-                exitToMenuText.setFillColor(Color::White);
-
-                if (!pausefont.openFromFile("arial.ttf")) {
-                    std::cerr << "Error: Could not load pausefont!\n";
-                    return;
-                }
-
-                gameWindow.draw(pauseText);
-                gameWindow.draw(continueText);
-                gameWindow.draw(exitToMenuText);
-                gameWindow.display();
+              
             }
         }
 
         gameplayMusic.stop();
     }
+
+    void gameOver() {
+    gameplayMusic.stop();
+    RenderWindow gameOverWindow(sf::VideoMode({ 1920, 1080 }), "Game Over");
+    if (!gameOverfont.openFromFile("arial.ttf")) {
+        cerr << "Failed to load gameover font!" << endl;
+        return;
+    }
+
+    Text gameOverText(gameOverfont);
+    gameOverText.setString("Game Over!");
+    gameOverText.setCharacterSize(100);
+    gameOverText.setFillColor(sf::Color::Red);
+    gameOverText.setPosition({ 700, 400 });
+
+    while (gameOverWindow.isOpen()) {
+
+        while (optional event = gameOverWindow.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                gameOverWindow.close();
+            }
+        }
+       
+        gameOverWindow.clear();
+        gameOverWindow.draw(gameOverText);
+        gameOverWindow.display();
+    }
+}
+
 };
 
 int main() {
