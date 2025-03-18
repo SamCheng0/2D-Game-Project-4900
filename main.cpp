@@ -38,6 +38,7 @@ private:
     Font font;
     Font healthFont;
     Font pausefont;
+    vector<Text> gameOverText;
     vector<Text> menuItems;
     vector<Text> healthText;
     int selectedItemIndex = 0;
