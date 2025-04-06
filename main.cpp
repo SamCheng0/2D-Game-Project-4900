@@ -12,6 +12,7 @@ using namespace std;
 const float ENEMY_SPAWN_INTERVAL = 0.5f; // 設定每 0.5 秒生成一個敵人
 const int PLAYER_MAX_HEALTH = 100;       // 角色最大血量
 const float DAMAGE_COOLDOWN = 1.0f;      // 敵人攻擊間隔
+const int HEALTH_PER_KILL = 5;           // 每次擊殺敵人回復的血量
 Clock attackClock;
 const float attackCooldown = 0.5f;       // 攻擊冷卻時間（0.5秒）
 const float attackRange = 200.f;         // 攻擊範圍半徑
@@ -36,11 +37,7 @@ class GameMenu {
 private:
     RenderWindow menuWindow;
     Font font;
-    Font healthFont;
-    Font pausefont;
-    vector<Text> gameOverText;
     vector<Text> menuItems;
-    vector<Text> healthText;
     int selectedItemIndex = 0;
     Texture backgroundTexture;
     Music music;
@@ -58,18 +55,18 @@ public:
 
     void initializeMenu() {
         if (!font.openFromFile("arial.ttf")) {
-            cerr << "Failed to load font!" << endl;
+            cerr << "Failed to load font! Ensure arial.ttf is in the project directory." << endl;
             return;
         }
 
         if (!backgroundTexture.loadFromFile("castle-1920x1080.png")) {
-            cerr << "Failed to load background image!" << endl;
+            cerr << "Failed to load background image! Ensure castle-1920x1080.png is in the project directory." << endl;
             return;
         }
         backgroundTexture.setSmooth(true);
 
         if (!music.openFromFile("backgroundmusic.wav")) {
-            cerr << "Failed to load background music!" << endl;
+            cerr << "Failed to load background music! Ensure backgroundmusic.wav is in the project directory." << endl;
             return;
         }
 
@@ -173,7 +170,7 @@ public:
         sf::RenderWindow optionsWindow(VideoMode({ 1920, 1080 }), "Options");
 
         if (!font.openFromFile("arial.ttf")) {
-            std::cerr << "Error loading font!\n";
+            std::cerr << "Error loading font! Ensure arial.ttf is in the project directory.\n";
             return;
         }
 
@@ -214,10 +211,10 @@ public:
         RenderWindow gameWindow(VideoMode({ 1920, 1080 }), "Game CISC 4900");
         gameWindow.setFramerateLimit(60);
 
-        // 載入背景（）
+        // 載入背景
         Texture gameBackgroundTexture;
-        if (!gameBackgroundTexture.loadFromFile("map5.png")) {
-            cerr << "Failed to load dungeon background texture!" << endl;
+        if (!gameBackgroundTexture.loadFromFile("map.png")) {
+            cerr << "Failed to load dungeon background texture! Ensure map.png is in the project directory." << endl;
             return;
         }
         Sprite gameBackground(gameBackgroundTexture);
@@ -225,7 +222,7 @@ public:
 
         Music gameplayMusic;
         if (!gameplayMusic.openFromFile("Dark Descent.wav")) {
-            cerr << "Failed to load gameplay music!" << endl;
+            cerr << "Failed to load gameplay music! Ensure Dark Descent.wav is in the project directory." << endl;
             return;
         }
         gameplayMusic.setLooping(true);
@@ -236,17 +233,16 @@ public:
 
         View view;
         view.setSize({ 1920.f, 1080.f });
-        //view.zoom(0.5f);
         view.setCenter({ 800.f, 500.f });
 
         Texture vampireTexture;
         if (!vampireTexture.loadFromFile("vampire-m-002.png")) {
-            cerr << "Failed to load vampire texture!" << endl;
+            cerr << "Failed to load vampire texture! Ensure vampire-m-002.png is in the project directory." << endl;
             return;
         }
 
         Sprite vampireSprite(vampireTexture);
-        vampireSprite.setPosition({1500.f, 1500.f });
+        vampireSprite.setPosition({ 3500.f, 1500.f });
         vampireSprite.setTextureRect({ {0, 0}, {48, 64} });
         vampireSprite.setScale({ 2.0f, 2.0f });
 
@@ -258,7 +254,7 @@ public:
 
         Texture enemyTexture;
         if (!enemyTexture.loadFromFile("spellun-sprite.png")) {
-            cerr << "Failed to load enemy texture!" << endl;
+            cerr << "Failed to load enemy texture! Ensure spellun-sprite.png is in the project directory." << endl;
             return;
         }
 
@@ -267,21 +263,58 @@ public:
         int playerHealth = PLAYER_MAX_HEALTH;
         Clock damageCooldownClock;
 
-        if (!healthFont.openFromFile("arial.ttf")) {
-            cerr << "Failed to load health font!" << endl;
+        // 字體加載（統一使用 uiFont）
+        Font uiFont;
+        if (!uiFont.openFromFile("arial.ttf")) {
+            cerr << "Failed to load UI font! Ensure arial.ttf is in the project directory." << endl;
             return;
         }
 
-        Text healthText(healthFont);
+        // 血量顯示（保持原始行為）
+        Text healthText(uiFont);
         healthText.setCharacterSize(50);
         healthText.setFillColor(Color::Red);
         healthText.setPosition({ 40.f, 50.f });
 
+        // 擊殺計分板
+        Text killText(uiFont);
+        killText.setCharacterSize(30);
+        killText.setFillColor(Color::White);
+        killText.setPosition({ 10.f, 10.f }); // 左上角位置
+        int killCount = 0; // 追蹤擊殺數
+
+        // 暫停選單文字（在迴圈外初始化）
+        Text pauseText(uiFont);
+        pauseText.setString("Pause");
+        pauseText.setCharacterSize(50);
+        pauseText.setFillColor(Color::White);
+        pauseText.setPosition(Vector2f(800.f, 450.f));
+
+        Text continueText(uiFont);
+        continueText.setCharacterSize(40);
+        continueText.setString("Continue");
+        continueText.setPosition(Vector2f(800.f, 500.f));
+        continueText.setFillColor(Color::White);
+
+        Text exitToMenuText(uiFont);
+        exitToMenuText.setCharacterSize(40);
+        exitToMenuText.setString("Exit to Menu");
+        exitToMenuText.setPosition(Vector2f(800.f, 550.f));
+        exitToMenuText.setFillColor(Color::White);
+
         Clock clock;
+        float survivalTimer = 0.f;
+        bool enemyKilledRecently = false;
+        Clock lastKillClock;
+        const float killResetTime = 5.f;
 
         while (gameWindow.isOpen()) {
-            music.stop();
             float deltaTime = clock.restart().asSeconds();
+
+            // 檢查自上次擊殺敵人後的時間
+            if (lastKillClock.getElapsedTime().asSeconds() >= killResetTime) {
+                enemyKilledRecently = false;
+            }
 
             while (optional event = gameWindow.pollEvent()) {
                 if (event->is<sf::Event::Closed>()) {
@@ -295,6 +328,16 @@ public:
             }
 
             if (!isPaused) {
+                // 生存機制：每秒檢查一次
+                survivalTimer += deltaTime;
+                if (survivalTimer >= 1.f) {
+                    survivalTimer = 0.f;
+                    if (!enemyKilledRecently) {
+                        playerHealth -= 1;
+                        cout << "No enemies killed! Player health: " << playerHealth << endl;
+                    }
+                }
+
                 Vector2f movement(0.f, 0.f);
                 if (Keyboard::isKeyPressed(Keyboard::Key::W)) {
                     movement.y = -speed;
@@ -315,6 +358,7 @@ public:
 
                 vampireSprite.move(movement * deltaTime);
 
+                // 血量顯示隨玩家移動（保持原始行為）
                 healthText.setPosition(Vector2f(vampireSprite.getPosition().x - 85.f, vampireSprite.getPosition().y - 70.f));
                 view.setCenter(vampireSprite.getPosition());
                 gameWindow.setView(view);
@@ -334,18 +378,17 @@ public:
                     cout << "Attack!" << endl;
 
                     Vector2f spawnOffset(0.f, 0.f);
-                    switch (direction) {  // direction: 0=上, 1=右, 2=下, 3=左
-                    case 0: spawnOffset = Vector2f(0.f, -50.f); break;  // 上方偏移
-                    case 1: spawnOffset = Vector2f(50.f, 0.f); break;   // 右方偏移
-                    case 2: spawnOffset = Vector2f(0.f, 50.f); break;   // 下方偏移
-                    case 3: spawnOffset = Vector2f(-50.f, 0.f); break;  // 左方偏移
+                    switch (direction) {
+                    case 0: spawnOffset = Vector2f(0.f, -50.f); break;
+                    case 1: spawnOffset = Vector2f(50.f, 0.f); break;
+                    case 2: spawnOffset = Vector2f(0.f, 50.f); break;
+                    case 3: spawnOffset = Vector2f(-50.f, 0.f); break;
                     }
 
                     for (int i = 0; i < 50; i++) {
                         Particle p;
                         p.shape = CircleShape(5.f);
                         p.shape.setFillColor(Color(255, 0, 0, 200));
-                        // 將粒子生成位置設定為吸血鬼位置加上偏移量
                         p.shape.setPosition(vampireSprite.getPosition() + spawnOffset);
                         float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.f;
                         float speed = static_cast<float>(rand() % 300 + 100);
@@ -391,23 +434,33 @@ public:
                     }
                 }
 
-                // 刪除血量為 0 的敵人
+                // 刪除血量為 0 的敵人，並追蹤擊殺
+                size_t initialEnemyCount = enemies.size();
                 enemies.erase(remove_if(enemies.begin(), enemies.end(), [](const Enemy& enemy) {
                     return enemy.health <= 0;
-                }), enemies.end());
+                    }), enemies.end());
+                if (enemies.size() < initialEnemyCount) {
+                    int enemiesKilled = initialEnemyCount - enemies.size();
+                    killCount += enemiesKilled; // 增加擊殺數
+                    // 吸血系統：擊殺敵人時回復血量
+                    playerHealth += enemiesKilled * HEALTH_PER_KILL;
+                    if (playerHealth > PLAYER_MAX_HEALTH) {
+                        playerHealth = PLAYER_MAX_HEALTH; // 確保血量不超過最大值
+                    }
+                    enemyKilledRecently = true;
+                    lastKillClock.restart();
+                    cout << "Enemy killed! Total kills: " << killCount << ", Player healed! Health: " << playerHealth << endl;
+                }
 
                 // 敵人生成機制
                 if (enemySpawnClock.getElapsedTime().asSeconds() >= ENEMY_SPAWN_INTERVAL) {
                     enemySpawnClock.restart();
-
-                    // 使用構造函數創建 Enemy 對象
                     Enemy newEnemy(enemyTexture);
                     float randX = static_cast<float>(std::rand() % 1800 + 50);
                     float randY = static_cast<float>(std::rand() % 1000 + 50);
                     newEnemy.sprite.setPosition(Vector2f(randX, randY));
                     newEnemy.sprite.setScale(Vector2f(1.5f, 1.5f));
                     enemies.push_back(newEnemy);
-
                     std::cout << "New enemy spawned! Total enemies: " << enemies.size() << std::endl;
                 }
 
@@ -432,61 +485,46 @@ public:
                 }
 
                 if (playerHealth <= 0) {
-                    gameOver();
+                    cout << "Game Over!" << endl;
                     gameWindow.close();
                 }
 
+                // 更新血量顯示（保持原始行為）
                 healthText.setString("Health: " + to_string(playerHealth));
 
-                gameWindow.clear();
-                gameWindow.draw(gameBackground);
-                gameWindow.draw(vampireSprite);
-                for (auto& enemy : enemies) {
-                    gameWindow.draw(enemy.sprite);
-                }
-                for (auto& particle : attackParticles) {
-                    gameWindow.draw(particle.shape);
-                }
-                gameWindow.draw(healthText);
-                gameWindow.display();
-                
+                // 更新擊殺計分板
+                killText.setString("Kills: " + to_string(killCount));
             }
+
+            // 渲染
+            gameWindow.clear();
+            gameWindow.setView(view);
+            gameWindow.draw(gameBackground);
+            gameWindow.draw(vampireSprite);
+            for (auto& enemy : enemies) {
+                gameWindow.draw(enemy.sprite);
+            }
+            for (auto& particle : attackParticles) {
+                gameWindow.draw(particle.shape);
+            }
+            gameWindow.draw(healthText);
+
+            // 切換到預設視圖以繪製固定 UI 元素（擊殺計分板）
+            gameWindow.setView(gameWindow.getDefaultView());
+            gameWindow.draw(killText);
+
             if (isPaused) {
-              
+                gameWindow.draw(pauseText);
+                gameWindow.draw(continueText);
+                gameWindow.draw(exitToMenuText);
             }
+
+            gameWindow.display();
         }
 
+        // 確保在退出前停止音樂
         gameplayMusic.stop();
     }
-
-    void gameOver() {
-    gameplayMusic.stop();
-    RenderWindow gameOverWindow(sf::VideoMode({ 1920, 1080 }), "Game Over");
-    if (!gameOverfont.openFromFile("arial.ttf")) {
-        cerr << "Failed to load gameover font!" << endl;
-        return;
-    }
-
-    Text gameOverText(gameOverfont);
-    gameOverText.setString("Game Over!");
-    gameOverText.setCharacterSize(100);
-    gameOverText.setFillColor(sf::Color::Red);
-    gameOverText.setPosition({ 700, 400 });
-
-    while (gameOverWindow.isOpen()) {
-
-        while (optional event = gameOverWindow.pollEvent()) {
-            if (event->is<sf::Event::Closed>()) {
-                gameOverWindow.close();
-            }
-        }
-       
-        gameOverWindow.clear();
-        gameOverWindow.draw(gameOverText);
-        gameOverWindow.display();
-    }
-}
-
 };
 
 int main() {
