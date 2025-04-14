@@ -5,6 +5,8 @@
 #include <vector>
 #include <cmath>
 #include <cstdint> // 為了使用 std::uint8_t
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/Graphics/Font.hpp>
 
 using namespace sf;
 using namespace std;
@@ -308,6 +310,12 @@ public:
         Clock lastKillClock;
         const float killResetTime = 5.f;
 
+        // 吸血效果文字相關變數
+        bool showHealText = false; // 是否顯示吸血文字
+        Clock healTextTimer;       // 控制吸血文字顯示時間
+        Text healText(uiFont);     // 吸血文字物件，與其他文字初始化方式一致
+        Vector2f healTextPosition; // 吸血文字的位置
+
         while (gameWindow.isOpen()) {
             float deltaTime = clock.restart().asSeconds();
 
@@ -443,13 +451,26 @@ public:
                     int enemiesKilled = initialEnemyCount - enemies.size();
                     killCount += enemiesKilled; // 增加擊殺數
                     // 吸血系統：擊殺敵人時回復血量
+                    int healthBefore = playerHealth;
                     playerHealth += enemiesKilled * HEALTH_PER_KILL;
                     if (playerHealth > PLAYER_MAX_HEALTH) {
-                        playerHealth = PLAYER_MAX_HEALTH; // 確保血量不超過最大值
+                        playerHealth = PLAYER_MAX_HEALTH;
                     }
+                    int healthGained = playerHealth - healthBefore;
                     enemyKilledRecently = true;
                     lastKillClock.restart();
                     cout << "Enemy killed! Total kills: " << killCount << ", Player healed! Health: " << playerHealth << endl;
+
+                    // 直接在這裡設置吸血效果的文字
+                    if (healthGained > 0) { // 只有實際回復血量時才顯示
+                        healText.setString("+" + to_string(healthGained));
+                        healText.setCharacterSize(50);
+                        healText.setFillColor(Color::Green);
+                        healTextPosition = vampireSprite.getPosition(); // 記錄當前位置
+                        healText.setPosition(healTextPosition);
+                        showHealText = true; // 標記為顯示
+                        healTextTimer.restart(); // 重置計時器
+                    }
                 }
 
                 // 敵人生成機制
@@ -484,6 +505,19 @@ public:
                     }
                 }
 
+                // 更新吸血文字的顯示
+                if (showHealText) {
+                    // 檢查顯示時間是否超過 1 秒
+                    if (healTextTimer.getElapsedTime().asSeconds() >= 1.0f) {
+                        showHealText = false; // 停止顯示
+                    }
+                    else {
+                        // 讓文字稍微向上移動（模擬浮動效果）
+                        healTextPosition.y -= 30.0f * deltaTime;
+                        healText.setPosition(healTextPosition);
+                    }
+                }
+
                 if (playerHealth <= 0) {
                     cout << "Game Over!" << endl;
                     gameWindow.close();
@@ -506,6 +540,9 @@ public:
             }
             for (auto& particle : attackParticles) {
                 gameWindow.draw(particle.shape);
+            }
+            if (showHealText) {
+                gameWindow.draw(healText); // 繪製吸血文字
             }
             gameWindow.draw(healthText);
 
