@@ -206,7 +206,6 @@ public:
 
         while (optionsWindow.isOpen()) {
             while (optional event = optionsWindow.pollEvent()) {
-                // 移除直接關閉窗口的邏輯，避免與 Esc 鍵衝突
                 // if (event->is<sf::Event::Closed>())
                 //     optionsWindow.close();
 
@@ -221,7 +220,6 @@ public:
                     }
                     else if (keyPressed->scancode == Keyboard::Scancode::Escape) {
                         optionsWindow.close();
-                        // 停止選項畫面的音樂，避免與主選單音樂重疊
                         music.stop();
                         run();
                         return; // 確保在關閉窗口後退出迴圈
