@@ -11,22 +11,20 @@
 using namespace sf;
 using namespace std;
 
-const float ENEMY_SPAWN_INTERVAL = 0.5f; // 設定每 0.5 秒生成一個敵人
-const int PLAYER_MAX_HEALTH = 100;       // 角色最大血量
-const float DAMAGE_COOLDOWN = 1.0f;      // 敵人攻擊間隔
-const int HEALTH_PER_KILL = 5;           // 每次擊殺敵人回復的血量
+const float ENEMY_SPAWN_INTERVAL = 0.5f;
+const int PLAYER_MAX_HEALTH = 100;
+const float DAMAGE_COOLDOWN = 1.0f;
+const int HEALTH_PER_KILL = 5;
 Clock attackClock;
-const float attackCooldown = 0.5f;       // 攻擊冷卻時間（0.5秒）
-const float attackRange = 200.f;         // 攻擊範圍半徑
+const float attackCooldown = 0.5f;
+const float attackRange = 200.f;
 
-// 粒子結構
 struct Particle {
-    CircleShape shape;    // 粒子的形狀
-    Vector2f velocity;    // 移動速度
-    float lifetime;       // 存活時間
+    CircleShape shape;
+    Vector2f velocity;
+    float lifetime;
 };
 
-// 敵人結構
 struct Enemy {
     Sprite sprite;
     int health;
@@ -43,10 +41,8 @@ private:
     Texture backgroundTexture;
     Music music;
     const vector<String> menuTexts = { "Play", "Options", "Exit" };
-
-    // 粒子效果相關
-    vector<Particle> attackParticles; // 儲存所有攻擊粒子
-    vector<Enemy> enemies;            // 儲存所有敵人
+    vector<Particle> attackParticles;
+    vector<Enemy> enemies;
 
 public:
     float volume = 50.0f;
@@ -142,12 +138,10 @@ public:
         switch (selectedItemIndex) {
         case 0:
             stopMusic();
-            // 移除 menuWindow.close()
             runGame();
             break;
         case 1:
             stopMusic();
-            // 移除 menuWindow.close()
             openOptionsWindow();
             cout << "Option button is clicked!" << endl;
             break;
@@ -194,21 +188,27 @@ public:
         volumeText.setPosition(Vector2f(800.f, 500.f));
 
         RectangleShape volumeBarBackground(Vector2f(300.f, 20.f));
-        volumeBarBackground.setFillColor(Color(128, 128, 128)); //gray
+        volumeBarBackground.setFillColor(Color(128, 128, 128));
         volumeBarBackground.setPosition(Vector2f(800.f, 550.f));
 
         RectangleShape volumeBar(Vector2f(300.f * (volume / 100.f), 20.f));
         volumeBar.setFillColor(Color::Green);
         volumeBar.setPosition(Vector2f(800.f, 550.f));
 
+        //Press Esc to Return to Menu
+        Text returnPrompt(font);
+        returnPrompt.setString("Press Esc to Return to Menu");
+        returnPrompt.setCharacterSize(25);
+        returnPrompt.setFillColor(Color::White);
+        returnPrompt.setOutlineColor(Color::White);
+        returnPrompt.setOutlineThickness(1.5f);
+        returnPrompt.setPosition(Vector2f(800.f, 600.f));
+
         music.setVolume(volume);
         music.play();
 
         while (optionsWindow.isOpen()) {
             while (optional event = optionsWindow.pollEvent()) {
-                // if (event->is<sf::Event::Closed>())
-                //     optionsWindow.close();
-
                 if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
                     if (keyPressed->scancode == Keyboard::Scancode::D && volume < 100) {
                         volume += 5;
@@ -222,7 +222,7 @@ public:
                         optionsWindow.close();
                         music.stop();
                         run();
-                        return; // 確保在關閉窗口後退出迴圈
+                        return;
                     }
                     volumeText.setString("Volume: " + std::to_string(static_cast<int>(volume)));
                     volumeBar.setSize(Vector2f(300.f * (volume / 100.f), 20.f));
@@ -234,6 +234,7 @@ public:
             optionsWindow.draw(volumeText);
             optionsWindow.draw(volumeBarBackground);
             optionsWindow.draw(volumeBar);
+            optionsWindow.draw(returnPrompt); // 繪製提示文字
             optionsWindow.display();
         }
     }
